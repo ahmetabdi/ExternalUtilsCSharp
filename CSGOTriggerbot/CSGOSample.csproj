@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -47,8 +48,12 @@
   <ItemGroup>
     <Compile Include="Bones.cs" />
     <Compile Include="CSGOConfigUtils.cs" />
+    <Compile Include="CSGOEntity.cs" />
     <Compile Include="CSGOLocalPlayer.cs" />
     <Compile Include="CSGOPlayer.cs" />
+    <Compile Include="CSGOScanner.cs" />
+    <Compile Include="CSGOWeapon.cs" />
+    <Compile Include="CSGOWeaponInfo.cs" />
     <Compile Include="GlowObjectDefinition.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

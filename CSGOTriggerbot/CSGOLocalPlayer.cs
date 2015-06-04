@@ -1,4 +1,5 @@
-﻿using ExternalUtilsCSharp.MathObjects;
+﻿using ExternalUtilsCSharp;
+using ExternalUtilsCSharp.MathObjects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,8 +27,14 @@ namespace CSGOTriggerbot
         [FieldOffset(0x104)]
         public Vector3 m_vecViewOffset;
 
+        [FieldOffset(0x110)]
+        public Vector3 m_vecVelocity;
+
         [FieldOffset(0x134)]
         public Vector3 m_vecOrigin;
+
+        [FieldOffset(0x12C0)]
+        public uint m_hActiveWeapon;
 
         [FieldOffset(0x13E8)]
         public Vector3 m_vecPunch;
@@ -41,6 +48,15 @@ namespace CSGOTriggerbot
         public bool IsValid()
         {
             return this.m_iID != 0 && this.m_iHealth > 0 && (m_iTeam == 2 || m_iTeam == 3);
+        }
+        public CSGOWeapon GetActiveWeapon(MemUtils memUtils)
+        {
+            if (this.m_hActiveWeapon == 0xFFFFFFFF)
+                return new CSGOWeapon() { m_iItemDefinitionIndex = 0, m_iWeaponID = 0 };
+
+            uint handle = this.m_hActiveWeapon & 0xFFF;
+            int weapAddress = Program.entityAddresses[handle - 1];
+            return memUtils.Read<CSGOWeapon>((IntPtr)weapAddress);
         }
     }
 }
