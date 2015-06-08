@@ -1,9 +1,11 @@
-﻿using ExternalUtilsCSharp;
+﻿using CSGOTriggerbot.CSGO;
+using ExternalUtilsCSharp;
 using ExternalUtilsCSharp.MathObjects;
 using ExternalUtilsCSharp.MemObjects;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -23,7 +25,8 @@ namespace CSGOTriggerbot
         public static int offsetMiscSetViewAngles = 0x00;
         public static int offsetMiscGlowManager = 0x00;
         public static int offsetMiscSignOnState = 0xE8;
-        public static int offsetMiscWeaponTable = 0x04a5aadc;
+        public static int offsetMiscWeaponTable = 0x04A5DC4C;        
+        public static int offsetvMatrix = 0x00;
 
         public static int offsetEntityID = 0x00;
         public static int offsetEntityHealth = 0x00;
@@ -83,7 +86,7 @@ namespace CSGOTriggerbot
             configUtils.SaveSettingsToFile("config.cfg");
             Console.WriteLine("Bye.");
         }
-
+        public static CSGOLocalPlayer localPlayer;
         private static void Loop()
         {
             ProcUtils proc;
@@ -91,18 +94,21 @@ namespace CSGOTriggerbot
             ProcessModule engineDll = null;
             byte[] data;
             GlowObjectDefinition[] glowObjects = new GlowObjectDefinition[128];
-            CSGOPlayer[] players = new CSGOPlayer[1024];
+            CSGOPlayer[] players = new CSGOPlayer[1024 * 2];
+            CSGOEntity[] entities = new CSGOEntity[1024*2];
             weaponInfos = new CSGOWeaponInfo[42];
-            entityAddresses = new int[players.Length];
+            entityAddresses = new int[1024*2];
             int entityListAddress;
             int localPlayerAddress;
             int clientStateAddress;
             int glowAddress;
             int glowCount;
             int setViewAnglesAddress;
+            Matrix vMatrix;
             SignOnState signOnState;
             CSGOPlayer nullPlayer = new CSGOPlayer() { m_iID = 0, m_iHealth = 0, m_iTeam = 0 };
-            CSGOLocalPlayer localPlayer;
+            CSGOEntity nullEntity = new CSGOEntity() { m_iID = 0, m_iDormant = 1, m_iVirtualTable = 0 };
+
             int lastAimlockTargetIdx = 0;
             Stopwatch lastSeen = new Stopwatch();
             Bones[] aimlockBones = new Bones[] { Bones.Head, Bones.Neck, Bones.Spine1, Bones.Spine2, Bones.Spine3, Bones.Spine4, Bones.Spine5 };
@@ -175,9 +181,9 @@ namespace CSGOTriggerbot
                 //Sanity checks
                 if (signOnState != SignOnState.SIGNONSTATE_FULL || !localPlayer.IsValid())
                     continue;
-
+                vMatrix = memUtils.ReadMatrix((IntPtr)(clientDllBase + offsetvMatrix), 4, 4);
                 #region Reading entitylist and entities
-                memUtils.Read((IntPtr)(clientDllBase + offsetMiscEntityList), out data, 16 * players.Length);
+                memUtils.Read((IntPtr)(clientDllBase + offsetMiscEntityList), out data, 16 * entityAddresses.Length);
 
                 //Read entities (players)
                 for (int i = 0; i < data.Length / 16; i++)
@@ -185,18 +191,19 @@ namespace CSGOTriggerbot
                     int address = BitConverter.ToInt32(data, i * 16);
                     entityAddresses[i] = address;
                     if (address != 0)
-                    {
-                        CSGOEntity entity = memUtils.Read<CSGOEntity>((IntPtr)address);
-                        if (entity.IsValid(memUtils))
-                        {
-                            if (entity.GetClassID(memUtils) == 34)
-                            {
-                                players[i] = memUtils.Read<CSGOPlayer>((IntPtr)address);
-                            }
-                        }
+                    {                      
+                        entities[i] = memUtils.Read<CSGOEntity>((IntPtr)address);
+                        if (entities[i].GetClassID(memUtils) == 34)
+                            players[i] = memUtils.Read<CSGOPlayer>((IntPtr)address);
+                        else
+                            players[i] = nullPlayer;
+                        //if (entity.IsValid(memUtils)){
+                        //    {}
+                        //}
                     }
                     else
                     {
+                        entities[i] = nullEntity;
                         players[i] = nullPlayer;
                     }
                 }
@@ -306,21 +313,25 @@ namespace CSGOTriggerbot
                 {
                     glowAddress = memUtils.Read<int>((IntPtr)(clientDllBase + offsetMiscGlowManager));
                     glowCount = memUtils.Read<int>((IntPtr)(clientDllBase + offsetMiscGlowManager + 0x04));
+                    glowObjects = new GlowObjectDefinition[glowCount];
                     int size = Marshal.SizeOf(typeof(GlowObjectDefinition));
                     memUtils.Read((IntPtr)(glowAddress), out data, size * glowCount);
-                    for (int i = 0; i < glowCount && i < glowObjects.Length; i++)
+                    for (int i = 0; i < glowObjects.Length; i++)
                     {
+                        var clr = Color.Black;
                         glowObjects[i] = data.GetStructure<GlowObjectDefinition>(i * size, size);
-                        for (int idx = 0; idx < players.Length; idx++)
+                        for (int idx = 0; idx < entities.Length; idx++)
                         {
                             if (glowObjects[i].pEntity != 0 && entityAddresses[idx] == glowObjects[i].pEntity)
                             {
-                                if (!players[idx].IsValid(memUtils))
+                                if (!entities[idx].IsValid(memUtils))
+                                    break;
+                                if (Glow.GlowCheck((ClassID)entities[idx].GetClassID(memUtils), players[idx], ref clr))
                                     break;
                                 glowObjects[i].a = 1f;
-                                glowObjects[i].r = (players[idx].m_iTeam == 2 ? 1f : 0f);
-                                glowObjects[i].g = 0;
-                                glowObjects[i].b = (players[idx].m_iTeam == 3 ? 1f : 0f);
+                                glowObjects[i].r =  (float)(clr.R / 255f);
+                                glowObjects[i].g =  (float)(clr.G / 255f);
+                                glowObjects[i].b = (float)(clr.B / 255f);
                                 glowObjects[i].m_bRenderWhenOccluded = true;
                                 glowObjects[i].m_bRenderWhenUnoccluded = true;
                                 glowObjects[i].m_bFullBloom = false;
