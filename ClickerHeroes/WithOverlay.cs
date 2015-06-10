@@ -1,13 +1,16 @@
 ﻿using ClickerHeroes.UI;
 using ExternalUtilsCSharp;
 using ExternalUtilsCSharp.SharpDXRenderer;
+using ExternalUtilsCSharp.SharpDXRenderer.Controls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using ExternalUtilsCSharp.UI;
+using SharpDX;
+using SharpDX.DirectWrite;
 
 namespace ClickerHeroes
 {
@@ -16,59 +19,116 @@ namespace ClickerHeroes
         private static ProcUtils proc;
         private static KeyUtils keys;
 
+        private static SharpDXOverlay overlay;
+        private static SharpDXPanel pnlPanel;
+        private static SharpDXPanel pnlControlsPanel;
+        private static SharpDXButton btnToggleMenu;
+        private static SharpDXCheckBox chbAdvanceLevel;
+        private static SharpDXCheckBox chbAutoClicker;
+        private static SharpDXCheckBox chbAutoSpells;
+        private static SharpDXLabel lblCaption;
+        private static SharpDXLabel lblDescription;
+        private static SharpDXLabel lblMenu;
+        private static Segments segments;
+        
         [STAThread]
         public static void Main(string[] args)
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+            System.Windows.Forms.Application.EnableVisualStyles();
+            System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+
+            pnlPanel = new SharpDXPanel();
+            pnlPanel.X = 2;
+            pnlPanel.Y = 2;
+
+            lblCaption = new SharpDXLabel();
+            lblCaption.Text = "ClickerHeroes";
+            lblDescription = new SharpDXLabel();
+            lblDescription.Text = "A sample of ExternalUtilsCSharp";
+            lblMenu = new SharpDXLabel();
+            lblMenu.Text = "Options";
+
+            btnToggleMenu = new SharpDXButton();
+            btnToggleMenu.Text = "Toggle menu";
+            btnToggleMenu.MouseClickEventUp += btnToggleMenu_MouseClickEventUp;
+
+            pnlControlsPanel = new SharpDXPanel();
+            pnlControlsPanel.Visible = false;
+            pnlControlsPanel.FillParent = true;
+
+            chbAdvanceLevel = new SharpDXCheckBox();
+            chbAdvanceLevel.Text = "Auto level-advancing";
+            chbAdvanceLevel.X = 2;
+            chbAutoClicker = new SharpDXCheckBox();
+            chbAutoClicker.Text = "Auto clicker";
+            chbAutoClicker.X = 2;
+            chbAutoSpells = new SharpDXCheckBox();
+            chbAutoSpells.Text = "Auto spell-casting";
+            chbAutoSpells.X = 2;
+            segments = new Segments();
+
             while(true)
             {
                 while (!ProcUtils.ProcessIsRunning("Clicker Heroes")) 
                     Thread.Sleep(250);
-                Console.Clear();
-                Console.WriteLine("Controls:\n" +
-                    "F10: Terminate\n" +
-                    "F9: Toggle auto-clicker\n" +
-                    "F8: Toggle drawing\n" +
-                    "F7: Toggle randomization\n" +
-                    "Num9/Num6: Increase/decrease clicker-offset (x)\n" +
-                    "Num8/Num5: Increase/decrease clicker-offset (y)\n" +
-                    "F6: Save window-size and -position and clicker-offsets\n" +
-                    "F5: Apply saved window-size and -position to game-window\n" +
-                    "F4: Toggle spell-casting");
 
                 proc = new ProcUtils("Clicker Heroes", WinAPI.ProcessAccessFlags.QueryLimitedInformation);
                 keys = new KeyUtils();
-                using(SharpDXOverlay overlay = new SharpDXOverlay())
+                using(overlay = new SharpDXOverlay())
                 {
+                    overlay.ChildControls.Clear();
                     overlay.Attach(proc.Process.MainWindowHandle);
                     overlay.TickEvent += overlay_TickEvent;
                     overlay.DrawOnlyWhenInForeground = false;
 
-                    SharpDXRenderer renderer = (SharpDXRenderer)((SharpDXOverlay)overlay).Renderer;
-                    renderer.CreateFont("font1", "Courier New", 10f);
+                    SharpDXRenderer renderer = overlay.Renderer;
+                    renderer.CreateFont("smallFont", "Segoe UI", 12f);
+                    renderer.CreateFont("tallFont", "Segoe UI", 16f);
 
-                    CHCheckBox checkBox = new CHCheckBox(renderer.GetFont("font1"));
-                    overlay.ChildControls.Add(checkBox);
-                    Application.Run(overlay);
+                    lblCaption.Font = renderer.GetFont("tallFont");
+                    lblDescription.Font = renderer.GetFont("smallFont");
+                    lblMenu.Font = renderer.GetFont("smallFont");
+                    btnToggleMenu.Font = renderer.GetFont("smallFont");
+                    chbAdvanceLevel.Font = renderer.GetFont("smallFont");
+                    chbAutoClicker.Font = renderer.GetFont("smallFont");
+                    chbAutoSpells.Font = renderer.GetFont("smallFont");
+                    segments.Width = overlay.Width;
+                    segments.Height = overlay.Height;
+
+                    pnlPanel.ChildControls.Clear();
+                    pnlPanel.AddChildControl(lblCaption);
+                    pnlPanel.AddChildControl(lblDescription);
+                    pnlPanel.InsertSpacer();
+                    pnlPanel.AddChildControl(btnToggleMenu);
+                    pnlPanel.AddChildControl(pnlControlsPanel);
+
+                    pnlControlsPanel.ChildControls.Clear();
+                    pnlControlsPanel.AddChildControl(lblMenu);
+                    pnlControlsPanel.AddChildControl(chbAdvanceLevel);
+                    pnlControlsPanel.AddChildControl(chbAutoClicker);
+                    pnlControlsPanel.AddChildControl(chbAutoSpells);
+                    overlay.ChildControls.Add(pnlPanel);
+                    overlay.ChildControls.Add(segments);
+
+                    System.Windows.Forms.Application.Run(overlay);
                 }
             }
         }
 
-        static void overlay_DrawEvent(object sender, ExternalUtilsCSharp.UI.Overlay<SharpDX.Color, SharpDX.Vector2, SharpDX.DirectWrite.TextFormat>.OverlayEventArgs e)
+        static void btnToggleMenu_MouseClickEventUp(object sender, Control<SharpDXRenderer, Color, Vector2, TextFormat>.MouseClickEventArgs e)
         {
-            e.Overlay.Renderer.BeginDraw();
-            e.Overlay.Renderer.Clear(SharpDX.Color.Transparent);
-            e.Overlay.Renderer.FillRectangle(
-                SharpDX.Color.Red,
-                new SharpDX.Vector2(200, 200),
-                new SharpDX.Vector2(200, 200));
-            e.Overlay.Renderer.EndDraw();
+            if (e.LeftButton)
+                pnlControlsPanel.Visible = !pnlControlsPanel.Visible;
         }
 
-        static void overlay_TickEvent(object sender, ExternalUtilsCSharp.UI.Overlay<SharpDX.Color, SharpDX.Vector2, SharpDX.DirectWrite.TextFormat>.DeltaEventArgs e)
+        static void overlay_TickEvent(object sender, ExternalUtilsCSharp.UI.Overlay<SharpDXRenderer, SharpDX.Color, SharpDX.Vector2, SharpDX.DirectWrite.TextFormat>.DeltaEventArgs e)
         {
             keys.Update();
+
+            overlay.UpdateControls(e.SecondsElapsed, keys);
+            segments.Width = overlay.Width;
+            segments.Height = overlay.Height;
+
             if (keys.KeyIsDown(WinAPI.VirtualKeyShort.INSERT))
                 e.Overlay.Close();
         }
