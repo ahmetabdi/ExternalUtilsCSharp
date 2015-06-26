@@ -24,13 +24,23 @@ namespace ExternalUtilsCSharp.SharpDXRenderer
         private FontFactory fontFactory;
         private Factory factory;
         private Hashtable fonts;
+        private bool disposing;
         #endregion
+
+        #region CONSTRUCTOR
+        public SharpDXRenderer() : base()
+        {
+            disposing = false;
+        }
+        #endregion
+
         #region DESTRUCTOR
         ~SharpDXRenderer()
         {
             this.Dispose();
         }
         #endregion
+
         #region METHODS
         /// <summary>
         /// Creates a new font
@@ -39,11 +49,11 @@ namespace ExternalUtilsCSharp.SharpDXRenderer
         /// <param name="fontFamilyName">Name of the used font-family</param>
         /// <param name="fontSize">Size of the font</param>
         /// <returns>New font</returns>
-        public TextFormat CreateFont(string fontName, string fontFamilyName, float fontSize)
+        public TextFormat CreateFont(string fontName, string fontFamilyName, float fontSize, FontStyle fontStyle = FontStyle.Normal, FontWeight fontWeight = FontWeight.Normal)
         {
             if (device == null)
                 throw new SharpDXException("The device was not initialized yet");
-            TextFormat font = new TextFormat(fontFactory, fontFamilyName, fontSize);
+            TextFormat font = new TextFormat(fontFactory, fontFamilyName, fontWeight, fontStyle, fontSize);
             fonts.Add(fontName, font);
             return font;
         }
@@ -215,7 +225,19 @@ namespace ExternalUtilsCSharp.SharpDXRenderer
         {
             if (device == null)
                 throw new SharpDXException("The device was not initialized yet");
-            device.EndDraw();
+            try
+            {
+                device.EndDraw();
+            }
+            catch
+            {
+                if (!disposing)
+                {
+                    device.Dispose();
+                    device = new WindowRenderTarget(factory, new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, SharpDX.Direct2D1.AlphaMode.Premultiplied)), renderTargetProperties);
+                    device.TextAntialiasMode = SharpDX.Direct2D1.TextAntialiasMode.Cleartype;
+                }
+            }
         }
 
         public override void Resize(Vector2 size)
@@ -228,8 +250,11 @@ namespace ExternalUtilsCSharp.SharpDXRenderer
 
         public override void Dispose()
         {
-            if (this.device != null)
+            if (this.device != null && !disposing)
+            {
+                disposing = true;
                 this.DestroyDevice();
+            }
         }
 
         public override Color GetRendererBackColor()

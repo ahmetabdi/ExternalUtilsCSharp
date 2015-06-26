@@ -36,12 +36,6 @@ namespace ExternalUtilsCSharp.SharpDXRenderer.Controls
             this.MouseLeftEvent += SharpDXWindow_MouseLeftEvent;
             this.MouseMovedEvent += SharpDXWindow_MouseMovedEvent;
             this.TextChangedEvent += SharpDXWindow_TextChangedEvent;
-            this.FontChangedEvent += SharpDXWindow_FontChangedEvent;
-        }
-
-        void SharpDXWindow_FontChangedEvent(object sender, EventArgs e)
-        {
-            this.Caption.Font = this.Font;
         }
 
         void SharpDXWindow_TextChangedEvent(object sender, EventArgs e)
@@ -102,9 +96,9 @@ namespace ExternalUtilsCSharp.SharpDXRenderer.Controls
                 mouseDown = false;
         }
 
-        public override void Update(double secondsElapsed, KeyUtils keyUtils, Vector2 cursorPoint)
+        public override void Update(double secondsElapsed, KeyUtils keyUtils, Vector2 cursorPoint, bool checkMouse = false)
         {
-            base.Update(secondsElapsed, keyUtils, cursorPoint);
+            base.Update(secondsElapsed, keyUtils, cursorPoint, checkMouse);
         }
         #endregion
     }

@@ -94,16 +94,16 @@ namespace ExternalUtilsCSharp.UI
             //Make form transparent and fully topmost
             int initialStyle = WinAPI.GetWindowLong(this.Handle, (int)WinAPI.GetWindowLongFlags.GWL_EXSTYLE);
             WinAPI.SetWindowLong(this.Handle, (int)WinAPI.GetWindowLongFlags.GWL_EXSTYLE, initialStyle | (int)WinAPI.ExtendedWindowStyles.WS_EX_LAYERED | (int)WinAPI.ExtendedWindowStyles.WS_EX_TRANSPARENT);
-            WinAPI.SetWindowPos(this.Handle, (IntPtr)WinAPI.SetWindpwPosHWNDFlags.TopMost, 0, 0, 0, 0, (uint)(WinAPI.SetWindowPosFlags.NOMOVE | WinAPI.SetWindowPosFlags.NOSIZE));
+            WinAPI.SetWindowPos(this.Handle, (IntPtr)WinAPI.SetWindpwPosHWNDFlags.TopMost, 0, 0, 0, 0, (uint)WinAPI.SetWindowPosFlags.NOMOVE | (uint)WinAPI.SetWindowPosFlags.NOSIZE);
             WinAPI.SetLayeredWindowAttributes(this.Handle, 0, 255, (uint)WinAPI.LayeredWindowAttributesFlags.LWA_ALPHA);
 
             //Controls
-            updLogic = new Updater(60);
+            updLogic = new Updater(256);
             updLogic.TickEvent += updLogic_TickEvent;
-            updDraw = new Updater(60);
+            updDraw = new Updater(256);
             updDraw.TickEvent += updDraw_TickEvent;
-            lastTimerTick = Environment.TickCount;
-            lastDrawTick = Environment.TickCount;
+            lastTimerTick = DateTime.Now.Ticks;
+            lastDrawTick = DateTime.Now.Ticks;
 
             //Overlay-properties
             this.DrawOnlyWhenInForeground = true;
@@ -113,15 +113,15 @@ namespace ExternalUtilsCSharp.UI
 
         void updDraw_TickEvent(object sender, Updater.DeltaEventArgs e)
         {
-            TimeSpan deltaDraw = new TimeSpan(Environment.TickCount - lastDrawTick);
-            lastDrawTick = Environment.TickCount;
+            TimeSpan deltaDraw = new TimeSpan(DateTime.Now.Ticks - lastDrawTick);
+            lastDrawTick = DateTime.Now.Ticks;
             this.Invoke((MethodInvoker)(() => { this.OnDraw(deltaDraw.TotalSeconds); }));
         }
 
         void updLogic_TickEvent(object sender, Updater.DeltaEventArgs e)
         {
-            TimeSpan deltaTimer = new TimeSpan(Environment.TickCount - lastTimerTick);
-            lastTimerTick = Environment.TickCount;
+            TimeSpan deltaTimer = new TimeSpan(DateTime.Now.Ticks - lastTimerTick);
+            lastTimerTick = DateTime.Now.Ticks;
             this.Invoke((MethodInvoker)(() => { this.OnTick(deltaTimer.TotalSeconds); }));
         }
         #endregion
@@ -138,7 +138,6 @@ namespace ExternalUtilsCSharp.UI
                 if (WinAPI.GetForegroundWindow() != this.hWnd)
                     return;
             }
-            //this.Invalidate();
 
             WinAPI.MARGINS margins = new WinAPI.MARGINS();
             margins.topHeight = 0; //this.Top;
@@ -182,6 +181,7 @@ namespace ExternalUtilsCSharp.UI
                     }
                 }
             }
+            
             OnTickEvent(new DeltaEventArgs(seconds, this));
         }
         /// <summary>
@@ -212,6 +212,12 @@ namespace ExternalUtilsCSharp.UI
         /// <param name="secondsElapsed"></param>
         /// <param name="keys"></param>
         public abstract void UpdateControls(double secondsElapsed, KeyUtils keys);
+        public virtual void Kill()
+        {
+            updDraw.StopUpdater();
+            updLogic.StopUpdater();
+            Application.Exit();
+        }
         #endregion
     }
 }

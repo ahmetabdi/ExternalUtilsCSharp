@@ -1,4 +1,5 @@
-﻿using ExternalUtilsCSharp.UI;
+﻿using ExternalUtilsCSharp.SharpDXRenderer.Controls.Layouts;
+using ExternalUtilsCSharp.UI;
 using SharpDX;
 using SharpDX.DirectWrite;
 using System;
@@ -23,6 +24,10 @@ namespace ExternalUtilsCSharp.SharpDXRenderer.Controls
         /// Whether this panel tightly wraps around its childcontrols or has a fixed height
         /// </summary>
         public bool DynamicHeight { get; set; }
+        /// <summary>
+        /// The layout used to automatically relocating childcontrols
+        /// </summary>
+        public Layout ContentLayout { get; set; }
         #endregion
 
         #region CONSTUCTOR
@@ -32,38 +37,58 @@ namespace ExternalUtilsCSharp.SharpDXRenderer.Controls
             this.DynamicWidth = true;
             this.DynamicHeight = true;
             this.BackColor = new Color(0.9f, 0.9f, 0.9f, 1f);
+            this.ContentLayout = LinearLayout.Instance;
+            this.FontChangedEvent += SharpDXPanel_FontChangedEvent;
+            this.VisibleChangedEvent+=SharpDXPanel_VisibleChangedEvent;
+        }
+
+        void SharpDXPanel_VisibleChangedEvent(object sender, EventArgs e)
+        {
+            foreach (SharpDXControl control in this.ChildControls)
+                control.Visible = this.Visible;
+        }
+
+        void SharpDXPanel_FontChangedEvent(object sender, EventArgs e)
+        {
+            foreach (SharpDXControl control in this.ChildControls)
+                control.Font = this.Font;
         }
         #endregion
 
         #region METHODS
-        public override void Update(double secondsElapsed, KeyUtils keyUtils, SharpDX.Vector2 cursorPoint)
+        public override void Update(double secondsElapsed, KeyUtils keyUtils, SharpDX.Vector2 cursorPoint, bool checkMouse = false)
         {
-            base.Update(secondsElapsed, keyUtils, cursorPoint);
+            base.Update(secondsElapsed, keyUtils, cursorPoint, checkMouse);
             if (this.Visible)
             {
+                //this.ContentLayout.ApplyLayout(this);
                 float width = 0, height = 0;
+                Control<SharpDXRenderer, Color, Vector2, TextFormat> lastControl = null;
+
                 for (int i = 0; i < this.ChildControls.Count; i++)
                 {
-                    Control<SharpDXRenderer, Color, Vector2, TextFormat> control = this.ChildControls[i];
-                    if (i == 0)
+                    var control = this.ChildControls[i];
+                    if (!control.Visible)
+                        continue;
+                    if (lastControl == null)
                     {
                         control.X = control.MarginLeft + this.MarginLeft;
                         control.Y = control.MarginTop;
                     }
                     else
                     {
-                        Control<SharpDXRenderer, Color, Vector2, TextFormat> lastControl = this.ChildControls[i - 1];
                         control.X = lastControl.X;
                         control.Y = lastControl.Y + lastControl.Height + lastControl.MarginBottom + control.MarginTop;
                     }
-
-                    if (this.DynamicHeight)
-                        if (i == this.ChildControls.Count - 1)
-                            height = control.Y + control.Height + control.MarginBottom ;
+                    lastControl = control;
                     if (this.DynamicWidth)
                         if (control.Width + control.MarginLeft + control.MarginRight > width)
                             width = control.Width + control.MarginLeft + control.MarginRight;
                 }
+
+                if (this.DynamicHeight)
+                    if (lastControl != null)
+                        height = lastControl.Y + lastControl.Height + lastControl.MarginBottom;
                 if (this.DynamicWidth)
                     this.Width = width + this.MarginLeft + this.MarginRight;
                 if (this.DynamicHeight)
@@ -92,6 +117,13 @@ namespace ExternalUtilsCSharp.SharpDXRenderer.Controls
         public void InsertSpacer()
         {
             this.AddChildControl(new SharpDXSpacer());
+        }
+
+        public override void ApplySettings(ConfigUtils config)
+        {
+            base.ApplySettings(config);
+            foreach (SharpDXControl control in ChildControls)
+                control.ApplySettings(config);
         }
         #endregion
     }
