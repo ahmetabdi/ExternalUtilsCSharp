@@ -65,10 +65,6 @@
     <Compile Include="WithOverlay.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ExternalUtilsCSharp.SharpDXRenderer\ExternalUtilsCSharp.SharpDXRenderer.csproj">
-      <Project>{c6c9429e-9aad-4497-b589-a4c58b98efa5}</Project>
-      <Name>ExternalUtilsCSharp.SharpDXRenderer</Name>
-    </ProjectReference>
     <ProjectReference Include="..\ExternalUtilsCSharp\ExternalUtilsCSharp.csproj">
       <Project>{e294e4f8-de32-42c1-8bfd-a3e488ec5820}</Project>
       <Name>ExternalUtilsCSharp</Name>
